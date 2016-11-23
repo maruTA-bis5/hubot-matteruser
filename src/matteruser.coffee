@@ -140,17 +140,22 @@ class Matteruser extends Adapter
         return true
 
     userAdded: (msg) =>
-        mmUser = @client.getUserByID msg.user_id
+        data = msg.data
+        mmUser = @client.getUserByID data.user_id
         @userChange user
-        user = @robot.brain.userForId msg.user_id
-        user.room = msg.channel_id
+        user = @robot.brain.userForId data.user_id
+        user.room = data.channel_id
         @receive new EnterMessage user
         return true
 
     userRemoved: (msg) =>
-        mmUser = @client.getUserByID msg.user_id
-        user = @robot.brain.userForId msg.user_id
-        user.room = msg.channel_id
+        data = msg.data
+        userId = data.user_id
+        userId = @client.self.id if !userId
+
+        mmUser = @client.getUserByID userId
+        user = @robot.brain.userForId userId
+        user.room = data.channel_id
         @receive new LeaveMessage user
         return true
 
