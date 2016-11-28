@@ -11,6 +11,7 @@ class Matteruser extends Adapter
         mmGroup = process.env.MATTERMOST_GROUP
         mmWSSPort = process.env.MATTERMOST_WSS_PORT or '443'
         mmHTTPPort = process.env.MATTERMOST_HTTP_PORT or null
+        @mmNoReply = process.env.MATTERMOST_REPLY == 'false'
 
         unless mmHost?
             @robot.logger.emergency "MATTERMOST_HOST is required"
@@ -28,6 +29,7 @@ class Matteruser extends Adapter
         @client = new MatterMostClient mmHost, mmGroup, mmUser, mmPassword, {wssPort: mmWSSPort, httpPort: mmHTTPPort, pingInterval: 30000}
 
         @client.on 'open', @.open
+        @client.on 'hello', @.onHello
         @client.on 'loggedIn', @.loggedIn
         @client.on 'connected', @.onConnected
         @client.on 'message', @.message
@@ -55,8 +57,13 @@ class Matteruser extends Adapter
         @emit 'connected'
         return true
 
+    onHello: (event) =>
+        @robot.logger.info 'Mattermost server: ' + event.data.server_version
+        return true
+
     userChange: (user) =>
         return unless user?.id?
+        @robot.logger.debug 'Adding user '+user.id
         newUser =
             name: user.username
             real_name: "#{user.first_name} #{user.last_name}"
@@ -81,7 +88,6 @@ class Matteruser extends Adapter
 
     profilesLoaded: =>
         for id, user of @client.users
-            @robot.logger.debug 'Adding user '+id
             @userChange user
 
     brainLoaded: =>
@@ -112,9 +118,42 @@ class Matteruser extends Adapter
             @client.postMessage(str, channel.id) for str in strings
 
     reply: (envelope, strings...) ->
-        @robot.logger.debug "Reply"
+        if @mmNoReply
+          return @send(envelope, strings...)
+
         strings = strings.map (s) -> "@#{envelope.user.name} #{s}"
-        @send envelope, strings...
+        postData = {}
+        postData.message = strings[0]
+
+        # Set the comment relationship
+        postData.root_id = envelope.message.id
+        postData.parent_id = postData.root_id
+
+        postData.create_at = Date.now()
+        postData.user_id = @self.id
+        postData.filename = []
+        # Check if the target room is also a user's username
+        user = @robot.brain.userForName(envelope.room)
+
+        # If it's not, continue as normal
+        unless user
+            channel = @client.findChannelByName(envelope.room)
+            postData.channel_id = channel?.id or envelope.room
+            @client.customMessage(postData, postData.channel_id)
+            return
+
+        # If it is, we assume they want to DM that user
+        # Message their DM channel ID if it already exists.
+        if user.mm?.dm_channel_id?
+            postData.channel_id = user.mm.dm_channel_id
+            @client.customMessage(postData, postData.channel_id)
+            return
+
+        # Otherwise, create a new DM channel ID and message it.
+        @client.getUserDirectMessageChannel user.id, (channel) =>
+            user.mm.dm_channel_id = channel.id
+            postData.channel_id = channel.id
+            @client.customMessage(postData, postData.channel_id)
 
     message: (msg) =>
         @robot.logger.debug msg
@@ -140,22 +179,17 @@ class Matteruser extends Adapter
         return true
 
     userAdded: (msg) =>
-        data = msg.data
-        mmUser = @client.getUserByID data.user_id
-        @userChange user
-        user = @robot.brain.userForId data.user_id
-        user.room = data.channel_id
+        mmUser = @client.getUserByID msg.data.user_id
+        @userChange mmUser
+        user = @robot.brain.userForId mmUser.id
+        user.room = msg.channel_id
         @receive new EnterMessage user
         return true
 
     userRemoved: (msg) =>
-        data = msg.data
-        userId = data.user_id
-        userId = @client.self.id if !userId
-
-        mmUser = @client.getUserByID userId
-        user = @robot.brain.userForId userId
-        user.room = data.channel_id
+        mmUser = @client.getUserByID msg.data.user_id
+        user = @robot.brain.userForId mmUser.id
+        user.room = msg.channel_id
         @receive new LeaveMessage user
         return true
 
