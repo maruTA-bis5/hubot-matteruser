@@ -37,15 +37,55 @@ Try `hubot map me [NAME_OF_CITY]` to have Hubot reach out to Google Maps and bri
 
 ![s](https://cloud.githubusercontent.com/assets/177788/20645769/9d58a786-b41c-11e6-90b1-6a9e7ab19172.png)
 
+## Docker usage
+
+### Standalone
+
+Clone this repository, then build the Hubot-Matteruser container:
+
+```
+docker build --build-arg hubot_owner=<owner> \
+             --build-arg hubot_name=<name> \
+             --build-arg hubot_description=<desc> \
+             --tag=hubot-matteruser \
+             .
+```
+
+Start the container:
+
+```
+docker run -it \
+           --env MATTERMOST_HOST=<mm_host> \
+           --env MATTERMOST_GROUP=<mm_team> \
+           --env MATTERMOST_USER=<mm_user_email> \
+           --env MATTERMOST_PASSWORD=<mm_user_password> \
+           -p 8080:8080 \
+           --name hubot-matteruser \
+           hubot-matteruser
+```
+
+### Docker Compose
+
+To integrate with a running Mattermost instance, update docker-compose.yml accordingly and launch the bot:
+
+``` 
+docker-compose build
+docker-compose run -d
+```
+
+
+If you just want to test locally, you can find [here](https://github.com/banzo/mattermost-docker/tree/feature/hubot-matteruser) a fork of the [official Mattermost Docker Compose stack](https://github.com/mattermost/mattermost-docker) plugged to Hubot-Matteruser: 
+
+
 ## Installation
 
 ### 1) Install a Mattermost server
 
-Follow the [Mattermost install guides](https://docs.mattermost.com/guides/administrator.html#install-guides) to set up the latest version of Mattermost 3.5.x.
+Follow the [Mattermost install guides](https://docs.mattermost.com/guides/administrator.html#install-guides) to set up the latest version of Mattermost 4.1.x.
 
 **IMPORTANT:** Make sure your `hubot-matteruser` and `mattermost-client` versions **match** the major version of your Mattermost server so the API versions will match. 
 
-For example, if you're using Mattermost server version 3.5.0 or 3.5.1, the _major version_ is "3.5", and you need version 3.5 of `hubot-matteruser` and `mattermost-client`. Neither version 3.4 or 3.6 will work, since the Mattermost server doesn't yet support API deprecation. See [releases archive](https://github.com/loafoe/hubot-matteruser/releases) for older versions. 
+For example, if you're using Mattermost server version 4.1.0 the _major version_ is "4.1", and it is highly recommended to use version 4.1.x of `hubot-matteruser` and `mattermost-client`. See [releases archive](https://github.com/loafoe/hubot-matteruser/releases) for older versions. 
 
 ### 2) Install hubot-matteruser
 
@@ -74,6 +114,7 @@ The adapter requires the following environment variables to be defined before yo
 | MATTERMOST\_USE\_TLS | No | (default: true) set to 'false' to switch to http/ws protocols |
 | MATTERMOST\_LOG\_LEVEL | No | (default: info) set log level (also: debug, ...) |
 | MATTERMOST\_REPLY | No | (default: true) set to 'false' to stop posting `reply` responses as comments |
+| MATTERMOST\_IGNORE\_USERS | No | (default: empty) Enter a comma-separated list of user senderi\_names to ignore. |
 
 #### Example configuration
 
@@ -88,19 +129,15 @@ export MATTERMOST_PASSWORD=s3cr3tP@ssw0rd!
 
 ## Upgrade
 
-To upgrade your Hubot for Mattermost 3.5, find the `package.json` file in your Hubot directory and look for the line in the `dependencies` section that references `hubot-matteruser`. Change the verion so it points to `^3.5.1` of the client. Example:
+To upgrade your Hubot for Mattermost 4.1.x, find the `package.json` file in your Hubot directory and look for the line in the `dependencies` section that references `hubot-matteruser`. Change the verion so it points to `^4.1.1` of the client. Example:
 
   ```json
     ...
     "dependencies": {
-      "hubot-matteruser": "^3.5.1"
+      "hubot-matteruser": "^4.1.1"
     },
     ...
   ```
-
-**IMPORTANT:** Make sure your `hubot-matteruser` and `mattermost-client` versions **match** the major version of your Mattermost server so the API versions will match. 
-
-For example, if you're using Mattermost server version 3.5.0 or 3.5.1, the _major version_ is "3.5", and you need version 3.5 of `hubot-matteruser` and `mattermost-client`. Neither version 3.4 or 3.6 will work, since the Mattermost server doesn't yet support API deprecation. See [releases archive](https://github.com/loafoe/hubot-matteruser/releases) for older versions. 
 
 ## License
 
