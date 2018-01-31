@@ -28,7 +28,7 @@
   },
   "main": "./src/matteruser",
   "dependencies": {
-    "mattermost-client": "^4.4.0",
+    "mattermost-client": "git+https://github.com/maruTA-bis5/mattermost-client.git#set-origin-header",
     "parent-require": "^1.0.0",
     "q": "^1.4.1"
   }
