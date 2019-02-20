@@ -229,6 +229,7 @@ class Matteruser extends Adapter
         else
             message = new TextMessage user, text, mmPost.id
         message.mm = mmPost
+        message.channel_handle = mm.data.channel_name
         @receive message
         @robot.logger.debug "Message sent to hubot brain."
         return true
